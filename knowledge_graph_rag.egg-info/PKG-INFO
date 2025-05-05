@@ -1,0 +1,132 @@
+Metadata-Version: 2.4
+Name: knowledge_graph_rag
+Version: 0.1.0
+Summary: A comprehensive AI system that combines Knowledge Graphs, RAG, and ReAct agents
+Home-page: https://github.com/yourusername/knowledge_graph_rag
+Author: Your Name
+Author-email: your.email@example.com
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: langchain>=0.1.0
+Requires-Dist: openai>=1.0.0
+Requires-Dist: networkx>=3.1
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: scikit-learn>=1.3.0
+Requires-Dist: faiss-cpu>=1.7.4
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: pytest>=7.4.0
+Requires-Dist: black>=23.7.0
+Requires-Dist: isort>=5.12.0
+Requires-Dist: mypy>=1.5.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: tqdm>=4.65.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Knowledge Graph RAG System
+
+A comprehensive AI system that combines Knowledge Graphs, Retrieval-Augmented Generation (RAG), and ReAct agents for intelligent information processing and reasoning.
+
+## Features
+
+- **Knowledge Graph Construction**: Build and maintain a semantic knowledge graph from various data sources
+- **RAG Integration**: Enhanced retrieval using vector embeddings and semantic search
+- **ReAct Agents**: Intelligent agents that can reason and act based on the knowledge graph
+- **Graph Algorithms**: Implementation of various graph algorithms for analysis and traversal
+- **Reasoning Capabilities**: Support for different types of reasoning (deductive, inductive, abductive)
+
+## Project Structure
+
+```
+knowledge_graph_rag/
+├── src/
+│   ├── graph/           # Knowledge graph implementation
+│   ├── rag/            # RAG system components
+│   ├── agents/         # ReAct agents
+│   ├── reasoning/      # Reasoning engines
+│   └── utils/          # Utility functions
+├── tests/              # Test cases
+├── data/               # Data storage
+└── docs/               # Documentation
+```
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/knowledge_graph_rag.git
+cd knowledge_graph_rag
+```
+
+2. Create a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your API keys and configuration
+```
+
+## Usage
+
+1. Initialize the knowledge graph:
+```python
+from src.graph import KnowledgeGraph
+graph = KnowledgeGraph()
+graph.build_from_data("path/to/data")
+```
+
+2. Set up the RAG system:
+```python
+from src.rag import RAGSystem
+rag = RAGSystem(graph)
+```
+
+3. Create and use ReAct agents:
+```python
+from src.agents import ReActAgent
+agent = ReActAgent(rag)
+response = agent.process_query("What is the relationship between X and Y?")
+```
+
+## Development
+
+- Run tests: `pytest tests/`
+- Format code: `black src/ tests/`
+- Sort imports: `isort src/ tests/`
+- Type checking: `mypy src/`
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+MIT License - see LICENSE file for details 

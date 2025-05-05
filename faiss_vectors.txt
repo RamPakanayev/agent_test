@@ -1,0 +1,21 @@
+Document #1
+Content: Elon Musk is the CEO of Tesla, a company that produces electric vehicles
+            and is known for its innovation in battery technology and autopilot software.
+Metadata: {'source': 'wiki_tesla.txt', 'entities': ['elon_musk', 'tesla'], 'kg_links': {'elon_musk': 'person', 'tesla': 'company'}}
+Embedding: [ 0.03033518 -0.08800054 -0.00236342 ...  0.00355336 -0.00729865
+  0.00704092]
+------------------------------------------------------------
+Document #2
+Content: Tesla's headquarters are located in Austin, Texas. The company has factories in
+            multiple countries and continues to expand its operations worldwide.
+Metadata: {'source': 'tesla_about.txt', 'entities': ['tesla', 'austin'], 'kg_links': {'tesla': 'company', 'austin': 'location'}}
+Embedding: [-0.03340321 -0.02608652  0.06900975 ... -0.00340372  0.02905892
+  0.01129723]
+------------------------------------------------------------
+Document #3
+Content: Elon Musk founded multiple companies including SpaceX, Neuralink, and OpenAI.
+            His work with Tesla has transformed the electric vehicle industry.
+Metadata: {'source': 'elon_musk_bio.txt', 'entities': ['elon_musk', 'tesla', 'spacex'], 'kg_links': {'elon_musk': 'person', 'spacex': 'company', 'tesla': 'company'}}
+Embedding: [ 0.01394811 -0.06085685  0.0111543  ...  0.01979731 -0.01762086
+  0.00384018]
+------------------------------------------------------------
