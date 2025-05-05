@@ -1,92 +1,132 @@
 # Knowledge Graph RAG System
 
-A comprehensive AI system that combines Knowledge Graphs, Retrieval-Augmented Generation (RAG), and ReAct agents for intelligent information processing and reasoning.
+A comprehensive AI library that combines Knowledge Graphs, Retrieval-Augmented Generation (RAG), and ReAct agents for intelligent information processing and reasoning.
+
+## Table of Contents
+
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [Usage](#usage)
+- [Running Tests](#running-tests)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
-- **Knowledge Graph Construction**: Build and maintain a semantic knowledge graph from various data sources
-- **RAG Integration**: Enhanced retrieval using vector embeddings and semantic search
-- **ReAct Agents**: Intelligent agents that can reason and act based on the knowledge graph
-- **Graph Algorithms**: Implementation of various graph algorithms for analysis and traversal
-- **Reasoning Capabilities**: Support for different types of reasoning (deductive, inductive, abductive)
+- Knowledge Graph construction and management
+- Retrieval-Augmented Generation with semantic embeddings
+- ReAct agents for step-by-step reasoning and decision-making
+- Support for in-memory (NetworkX) or Neo4j graph backends
+- Utility functions for embeddings and vector storage (FAISS)
 
 ## Project Structure
 
 ```
-knowledge_graph_rag/
+.
 ├── src/
-│   ├── graph/           # Knowledge graph implementation
-│   ├── rag/            # RAG system components
-│   ├── agents/         # ReAct agents
-│   ├── reasoning/      # Reasoning engines
-│   └── utils/          # Utility functions
-├── tests/              # Test cases
-├── data/               # Data storage
-└── docs/               # Documentation
+│   ├── graph/          # Knowledge graph implementation (Node, Edge, etc.)
+│   ├── rag/            # RAG system components (RAGSystem, Document, etc.)
+│   ├── agents/         # ReAct agent implementations
+│   └── utils/          # Utility functions (embeddings, dotenv loader, etc.)
+├── tests/              # Unit and integration tests
+├── run.py              # Demonstration entry point script
+├── setup.py            # Package configuration and metadata
+├── requirements.txt    # Python dependencies
+├── .env                # Environment variables (ignored by Git)
+├── faiss_vectors.txt   # Example FAISS vectors file
+├── my_index.faiss      # Example FAISS index file
+└── README.md           # Project documentation
 ```
 
 ## Installation
 
 1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/knowledge_graph_rag.git
-cd knowledge_graph_rag
-```
+   ```bash
+   git clone https://github.com/yourusername/knowledge_graph_rag.git
+   cd knowledge_graph_rag
+   ```
 
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   # On macOS/Linux:
+   source venv/bin/activate
+   # On Windows (PowerShell):
+   venv\Scripts\activate
+   ```
 
 3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-4. Set up environment variables:
-```bash
-cp .env.example .env
-# Edit .env with your API keys and configuration
+## Environment Variables
+
+Create a `.env` file in the project root to store your environment variables. This file is ignored by Git.
+
+```ini
+OPENAI_API_KEY=<your_openai_api_key>
+# Optional Neo4j configuration:
+# NEO4J_URI=bolt://localhost:7687
+# NEO4J_USER=neo4j
+# NEO4J_PASSWORD=<your_password>
 ```
 
 ## Usage
 
-1. Initialize the knowledge graph:
-```python
-from src.graph import KnowledgeGraph
-graph = KnowledgeGraph()
-graph.build_from_data("path/to/data")
+### Running the Demonstration
+
+A sample Tesla knowledge graph and RAG demonstration is provided via `run.py`:
+
+```bash
+python run.py
 ```
 
-2. Set up the RAG system:
+This script will:
+1. Build a sample knowledge graph for Tesla.
+2. Initialize the RAG system with vector embeddings.
+3. Add sample Tesla-related documents.
+4. Execute example queries using a ReAct agent.
+5. Clean up resources (close graph connection).
+
+### Using as a Library
+
+Import and integrate components in your own Python code:
+
 ```python
-from src.rag import RAGSystem
-rag = RAGSystem(graph)
+from src.graph.knowledge_graph import KnowledgeGraph, Node, Edge
+from src.rag.rag_system import RAGSystem, Document
+from src.agents.react_agent import ReActAgent
+from src.utils.embeddings import get_embedding
+
+# Example: build your own graph, add documents, run queries
 ```
 
-3. Create and use ReAct agents:
-```python
-from src.agents import ReActAgent
-agent = ReActAgent(rag)
-response = agent.process_query("What is the relationship between X and Y?")
+## Running Tests
+
+Execute all tests with pytest:
+
+```bash
+pytest tests/
 ```
 
 ## Development
 
-- Run tests: `pytest tests/`
 - Format code: `black src/ tests/`
 - Sort imports: `isort src/ tests/`
-- Type checking: `mypy src/`
+- Type check: `mypy src/`
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+2. Create a feature branch: `git checkout -b feature/YourFeature`
+3. Make your changes and commit: `git commit -m "Add YourFeature"`
+4. Push to your branch: `git push origin feature/YourFeature`
+5. Open a Pull Request and describe your changes
 
 ## License
 
-MIT License - see LICENSE file for details 
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details. 
