@@ -77,12 +77,30 @@ OPENAI_API_KEY=<your_openai_api_key>
 
 ## Usage
 
-### Running the Demonstration
+### Initialization and Running Separately
 
-A sample Tesla knowledge graph and RAG demonstration is provided via `run.py`:
+The system is designed with separation between data initialization and agent execution:
+
+1. Initialize the knowledge graph and documents:
+   ```bash
+   python init_data.py
+   ```
+   This creates the knowledge graph in Neo4j (or NetworkX) and builds the FAISS index.
+
+2. Run the agent on the existing data:
+   ```bash
+   python run.py
+   ```
+   This loads the graph and documents (without rebuilding them) and runs queries.
+
+This separation allows for initializing data once and running queries multiple times without rebuilding the knowledge graph or re-embedding documents.
+
+### Running the All-in-One Demonstration
+
+A combined initialization and execution demo is available in `src/example.py`:
 
 ```bash
-python run.py
+python -m src.example
 ```
 
 This script will:
