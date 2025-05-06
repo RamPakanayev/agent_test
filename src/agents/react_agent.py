@@ -50,7 +50,7 @@ class ReActAgent:
         self.client = OpenAI()
         
     def _think(self, query: str, context: List[Dict], step: int) -> Thought:
-        """Generate a thought based on the current state."""
+        """Generate a thought based on the current state, including entity extraction."""
         try:
             # Use OpenAI to generate a thought
             print(f"\n{'═'*60}")
@@ -60,11 +60,11 @@ class ReActAgent:
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are an AI assistant analyzing information. Generate a thought about what to do next."},
-                    {"role": "user", "content": f"Query: {query}\nContext: {context}\nWhat should I think about next?"}
+                    {"role": "system", "content": "You are an AI assistant analyzing information. Generate a thought about what to do next, including identifying entities or keywords from the query for graph search."},
+                    {"role": "user", "content": f"Query: {query}\nContext: {context}\nWhat should I think about next? Identify any entities or keywords in the query that could be used to search a knowledge graph."}
                 ],
                 temperature=0.7,
-                max_tokens=100
+                max_tokens=150
             )
             thought_content = response.choices[0].message.content
             print(f"\n🤔 Thought: {thought_content}")
@@ -79,7 +79,7 @@ class ReActAgent:
             )
         
     def _act(self, thought: Thought, step: int) -> Action:
-        """Determine the next action based on the thought."""
+        """Determine the next action based on the thought, deciding between graph search and vector retrieval."""
         try:
             print(f"\n{'─'*60}")
             print(f"🧠 STEP {step+1}: ACTING")
@@ -89,7 +89,7 @@ class ReActAgent:
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are an AI assistant deciding what action to take. Choose between 'search_graph' or 'retrieve_documents'."},
+                    {"role": "system", "content": "You are an AI assistant deciding what action to take. Choose between 'search_graph' for structured knowledge graph traversal or 'retrieve_documents' for vector similarity search. Use 'search_graph' when entities or relationships are mentioned, and 'retrieve_documents' when broader context or detailed text is needed."},
                     {"role": "user", "content": f"Based on this thought: {thought.content}\nWhat action should I take?"}
                 ],
                 temperature=0.7,
@@ -97,7 +97,7 @@ class ReActAgent:
             )
             action_content = response.choices[0].message.content.lower()
             
-            if "search" in action_content or "graph" in action_content:
+            if 'graph' in action_content or 'search_graph' in action_content or 'entities' in action_content or 'relationship' in action_content:
                 action = Action(type="search_graph", parameters={"query": thought.content})
             else:
                 action = Action(type="retrieve_documents", parameters={"query": thought.content})
@@ -114,7 +114,7 @@ class ReActAgent:
             return fallback_action
         
     def _observe(self, action: Action, step: int) -> Observation:
-        """Execute the action and observe the result."""
+        """Execute the action and observe the result, using graph context to filter vector searches if needed."""
         try:
             print(f"\n{'─'*60}")
             print(f"🧠 STEP {step+1}: OBSERVING")
@@ -128,11 +128,11 @@ class ReActAgent:
                 observation_content = str([node.properties for node in nodes]) if nodes else "No relevant nodes found"
                 success = bool(nodes)
             elif action.type == "retrieve_documents":
-                # Try to retrieve documents with relevance threshold
-                docs, dists = self.rag_system.retrieve(
-                    action.parameters["query"], relevance_threshold=relevance_threshold
+                # Try to retrieve documents with relevance threshold, using graph context if available
+                docs = self.rag_system.retrieve_with_graph(
+                    action.parameters["query"], top_k=5
                 )
-                observation_content = str([doc.content for doc in docs]) if docs else "No relevant documents found"
+                observation_content = str([doc.get('content', doc) for doc in docs]) if docs else "No relevant documents found"
                 success = bool(docs)
             else:
                 observation_content = "Unknown action type"
@@ -194,35 +194,29 @@ class ReActAgent:
             The agent's response to the query
         """
         self.history = []
-        
-        print(f"\n{'═'*80}")
-        print(f"📝 PROCESSING QUERY: {query}")
-        print(f"{'═'*80}")
-        
-        try:
-            # Try to get context from RAG system
-            print("\n🔄 Retrieving initial context from RAG system...")
-            context = self.rag_system.retrieve_with_graph(query)
-            if context:
-                print(f"📄 Initial context: Found {len(context)} items")
-            else:
-                print("❌ No initial context found")
-        except Exception as e:
-            print(f"Error retrieving context: {e}")
-            context = []
-        
-        # If we couldn't get context, return 'I Don\'t Know' immediately
-        if not context:
-            return "I Don't Know"
-        
-        # Early answer check: if the initial context is enough, answer immediately
-        print("\n🎯 Generating response from initial context...")
+        context = self.rag_system.retrieve_with_graph(query)
+
+        # 1. Always do a THINK step first
+        thought = self._think(query, context, step=0)
+        self.history.append({"step": 0, "thought": thought.dict()})
+
+        # 2. ACT based on that thought
+        action = self._act(thought, 0)
+        self.history.append({"step": 0, "action": action.dict()})
+
+        # 3. OBSERVE the result
+        observation = self._observe(action, 0)
+        self.history.append({"step": 0, "observation": observation.dict()})
+
+        # 4. Update context and *then* decide if you can answer immediately
+        if observation.success:
+            context.append({"type":"observation","content":observation.content})
         response = self.rag_system.generate_response(query, context)
         if response.strip() != "I Don't Know":
-            print("\n🏁 Early exit: Found a valid answer from initial context. Returning response.")
             return response
-        
-        for step in range(self.max_steps):
+
+        # 5. Otherwise continue your full loop from step 1→max_steps…
+        for step in range(1, self.max_steps):
             try:
                 # Think
                 thought = self._think(query, context, step)

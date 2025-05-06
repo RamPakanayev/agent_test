@@ -141,13 +141,14 @@ def main():
                 print(f"❌ Error adding document: {e}")
 
         example_queries = [
-            # "Who is the CEO of Tesla?",
-            # "Where is Tesla headquartered?",
-            "who founded openai?",
-            # "What is the capital of France?",
-            # "What is the relationship between Tesla and innovation?"
-            # "How does Tesla's innovation strategy compare to its competitors? and how does it related to aliens?"
-            # "how much is 2+2?"
+            #single hop question:
+            "Who founded OpenAI?",
+            #multi hop question:
+            "who founded the company that headquarters is in the capital of Texas?",
+            #i dont know question:
+            "what is the capital of France?",
+            #most complex questiom multi-hop:
+            "What year was SpaceX founded?",
         ]
 
         print("\n❓ Processing Tesla queries...")

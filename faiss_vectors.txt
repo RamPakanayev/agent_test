@@ -2,8 +2,8 @@ Document #1
 Content: Elon Musk is the CEO of Tesla, a company that produces electric vehicles
             and is known for its innovation in battery technology and autopilot software.
 Metadata: {'source': 'wiki_tesla.txt', 'entities': ['elon_musk', 'tesla'], 'kg_links': {'elon_musk': 'person', 'tesla': 'company'}}
-Embedding: [ 0.03033518 -0.08800054 -0.00236342 ...  0.00355336 -0.00729865
-  0.00704092]
+Embedding: [ 0.03003021 -0.08789543 -0.00320223 ...  0.00435745 -0.0073484
+  0.00761731]
 ------------------------------------------------------------
 Document #2
 Content: Tesla's headquarters are located in Austin, Texas. The company has factories in
