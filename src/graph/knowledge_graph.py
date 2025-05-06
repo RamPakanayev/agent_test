@@ -197,7 +197,15 @@ class KnowledgeGraph:
         
         # NetworkX fallback
         related_entities = []
-        # Search for nodes containing the entity string in ID or properties
+        # Check exact node ID match
+        if entity_id in self.graph:
+            # Get all neighbor nodes
+            for neighbor in self.graph.neighbors(entity_id):
+                related_entities.append(neighbor)
+            for neighbor in self.graph.predecessors(entity_id):
+                related_entities.append(neighbor)
+        
+        # Also search for partial matches in node IDs and properties
         for node_id, node_data in self.graph.nodes(data=True):
             # Check if entity string appears in the node ID
             if entity_id in node_id.lower():
@@ -210,8 +218,86 @@ class KnowledgeGraph:
                 if isinstance(prop_value, str) and entity_id in prop_value.lower():
                     related_entities.append(node_id)
                     break
+
+        return list(set(related_entities))
+
+    def query_direct_relationships(self, rel_type=None) -> List[Dict]:
+        """Query relationships directly by type.
         
-        return related_entities
+        Args:
+            rel_type: Optional filter for relationship type
+        
+        Returns:
+            List of dictionaries with source, target, and relationship info
+        """
+        results = []
+        
+        if self.use_neo4j:
+            try:
+                with self.driver.session() as session:
+                    # If rel_type is provided, filter by it
+                    if rel_type:
+                        query = """
+                        MATCH (src:Entity)-[r:RELATION {type: $rel_type}]->(tgt:Entity)
+                        RETURN src.id as source_id, src.type as source_type, src.name as source_name,
+                               tgt.id as target_id, tgt.type as target_type, tgt.name as target_name,
+                               r.type as rel_type
+                        """
+                        result = session.run(query, rel_type=rel_type)
+                    else:
+                        # Otherwise get all relationships
+                        query = """
+                        MATCH (src:Entity)-[r:RELATION]->(tgt:Entity)
+                        RETURN src.id as source_id, src.type as source_type, src.name as source_name,
+                               tgt.id as target_id, tgt.type as target_type, tgt.name as target_name,
+                               r.type as rel_type
+                        """
+                        result = session.run(query)
+                        
+                    for record in result:
+                        results.append({
+                            "source": {
+                                "id": record["source_id"],
+                                "type": record["source_type"],
+                                "name": record["source_name"],
+                            },
+                            "target": {
+                                "id": record["target_id"],
+                                "type": record["target_type"],
+                                "name": record["target_name"],
+                            },
+                            "relationship": record["rel_type"]
+                        })
+                        
+                    return results
+                    
+            except Exception as e:
+                print(f"⚠️ Error querying relationships from Neo4j: {e}. Using NetworkX fallback.")
+        
+        # NetworkX fallback
+        for source, target, edge_data in self.graph.edges(data=True):
+            # Filter by relationship type if provided
+            if rel_type and edge_data.get('type') != rel_type:
+                continue
+                
+            source_data = self.graph.nodes[source]
+            target_data = self.graph.nodes[target]
+            
+            results.append({
+                "source": {
+                    "id": source,
+                    "type": source_data.get('type', 'unknown'),
+                    "name": source_data.get('properties', {}).get('name', source),
+                },
+                "target": {
+                    "id": target,
+                    "type": target_data.get('type', 'unknown'),
+                    "name": target_data.get('properties', {}).get('name', target),
+                },
+                "relationship": edge_data.get('type', 'unknown')
+            })
+        
+        return results
 
     def find_paths(self, source: str, target: str, max_length: int = 3) -> List[List[str]]:
         """Find all paths between two nodes up to a maximum length."""

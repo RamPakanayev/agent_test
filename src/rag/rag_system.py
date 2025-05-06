@@ -127,6 +127,41 @@ class RAGSystem:
         results = []
         related_kg_entities = []
         
+        # Check for direct relationship queries first
+        direct_relationship_patterns = {
+            "ceo": "hasCEO",
+            "who is the ceo": "hasCEO",
+            "headquarter": "headquarteredIn",
+            "located": "headquarteredIn",
+            "found": "founded"
+        }
+        
+        # Try direct relationship query first
+        direct_rel_type = None
+        for pattern, rel_type in direct_relationship_patterns.items():
+            if pattern in query.lower():
+                direct_rel_type = rel_type
+                break
+                
+        if direct_rel_type:
+            print(f"Detected relationship question about '{direct_rel_type}', querying directly...")
+            relationships = self.knowledge_graph.query_direct_relationships(direct_rel_type)
+            
+            if relationships:
+                for rel in relationships:
+                    # Create a graph context result
+                    results.append({
+                        "type": "graph_relationship",
+                        "content": f"{rel['source']['name']} {direct_rel_type} {rel['target']['name']}",
+                        "metadata": {
+                            "source_id": rel['source']['id'],
+                            "target_id": rel['target']['id'],
+                            "relationship": direct_rel_type
+                        }
+                    })
+                print(f"✅ Found {len(relationships)} direct relationships of type '{direct_rel_type}'")
+                # If we found direct relationships, still proceed to add document context
+        
         # Step 1: Extract entities from query using naive approach
         # (In production, you'd use NER or entity linking)
         print(f"Extracting entities from query: '{query}'")
@@ -156,6 +191,17 @@ class RAGSystem:
             # Remove duplicates
             related_kg_entities = list(set(related_kg_entities))
             print(f"All KG entities to filter with: {related_kg_entities}")
+            
+            # If we have related entities, try querying node information directly
+            if related_kg_entities:
+                for entity_id in related_kg_entities:
+                    node = self.knowledge_graph.get_node(entity_id)
+                    if node:
+                        results.append({
+                            "type": "graph_node",
+                            "content": f"{node.properties.get('name', node.id)}: {node.properties.get('description', '')}",
+                            "metadata": {"id": node.id, "type": node.type}
+                        })
             
         except Exception as e:
             print(f"Error during KG entity lookup: {e}")
@@ -194,15 +240,24 @@ class RAGSystem:
             remaining_docs = [doc for doc in doc_candidates[0] if doc not in filtered_docs]
             filtered_docs.extend(remaining_docs[:top_k - len(filtered_docs)])
             
-        # Step 5: Create results
+        # Step 5: Create results from documents
         for doc in filtered_docs:
             results.append({
                 "type": "document",
                 "content": doc.content,
                 "metadata": doc.metadata
             })
-            
-        print(f"Final result: {len(results)} documents after KG filtering")
+        
+        # If we still have no results, add a fallback result with general info
+        if not results:
+            general_info = {
+                "type": "note", 
+                "content": "No specific information found in the knowledge base for this query.",
+                "metadata": {}
+            }
+            results.append(general_info)
+
+        print(f"Final result: {len(results)} items after graph and document retrieval")
         return results
 
     def generate_response(self, query: str, context: List[Dict]) -> str:
@@ -213,23 +268,65 @@ class RAGSystem:
         ):
             return "I Don't Know"
         try:
+            # Check for direct graph relationship answers
+            graph_relationships = [item for item in context if item.get('type') == 'graph_relationship']
+            if graph_relationships:
+                # For simple relationship questions, we can directly answer
+                for rel in graph_relationships:
+                    content = rel['content']
+                    # Check if content directly answers the query
+                    if "hasCEO" in content and ("who" in query.lower() and "ceo" in query.lower()):
+                        # Extract the CEO name (format: "Company hasCEO Person")
+                        parts = content.split("hasCEO")
+                        if len(parts) == 2:
+                            return parts[1].strip()
+                            
+                    elif "headquarteredIn" in content and ("where" in query.lower() and 
+                                                         ("headquarter" in query.lower() or "located" in query.lower())):
+                        # Extract location (format: "Company headquarteredIn Location")
+                        parts = content.split("headquarteredIn")
+                        if len(parts) == 2:
+                            return parts[1].strip()
+                            
+                    elif "founded" in content and "found" in query.lower():
+                        # Extract founded entity (format: "Person founded Company")
+                        parts = content.split("founded")
+                        if len(parts) == 2:
+                            # If asking who founded
+                            if "who" in query.lower():
+                                return parts[0].strip()
+                            # If asking what was founded
+                            else:
+                                return parts[1].strip()
+            
             # Prepare context string
-            context_str = "\n\n".join([
-                f"{item['type'].upper()}:\n{item['content']}"
-                for item in context
-            ])
+            context_items = []
+            for item in context:
+                if item['type'] == 'graph_relationship':
+                    # Format relationship data for better readability
+                    context_items.append(f"FACT: {item['content']}")
+                elif item['type'] == 'graph_node':
+                    # Format node data for better readability
+                    context_items.append(f"ENTITY: {item['content']}")
+                else:
+                    context_items.append(f"{item['type'].upper()}:\n{item['content']}")
+                    
+            context_str = "\n\n".join(context_items)
             
             # Generate response using OpenAI
             print("Generating response with OpenAI...")
             messages = [
-                {"role": "system", "content": """You are a knowledgeable AI assistant with expertise on Tesla and Elon Musk.\nUse the provided context to answer questions accurately. If the answer is not in the context, say: I Don't Know.\nIf the context is insufficient, indicate this clearly."""},
+                {"role": "system", "content": """You are a knowledgeable AI assistant with expertise on Tesla and Elon Musk.
+Use the provided context to answer questions accurately and concisely. 
+If the answer is clearly in the context (especially in FACT or ENTITY sections), give a direct, concise answer.
+If the answer is not in the context, say: I Don't Know."""},
                 {"role": "user", "content": f"""Context:\n{context_str}\n\nQuestion: {query}\n\nPlease provide a clear and accurate response based strictly on the context above. If the answer is not in the context, say: I Don't Know."""}
             ]
             
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=messages,
-                temperature=0.3,
+                temperature=0.1,
                 max_tokens=300
             )
             
@@ -259,6 +356,66 @@ class RAGSystem:
         except Exception as e:
             print(f"Error processing query: {e}")
             return f"I apologize, but I'm having trouble processing your query. Error: {str(e)}"
+
+    def load_documents_from_vectors_file(self, file_path="faiss_vectors.txt"):
+        """Load documents from the vectors file created during index initialization."""
+        if not os.path.exists(file_path):
+            print(f"Warning: {file_path} not found. No documents loaded.")
+            return []
+
+        print(f"Loading documents from {file_path}...")
+        current_doc = {}
+        docs_loaded = 0
+        
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            
+            i = 0
+            while i < len(lines):
+                line = lines[i].strip()
+                
+                if line.startswith("Document #"):
+                    # New document section
+                    if current_doc.get("content") and current_doc.get("metadata"):
+                        # Create a document from previous data
+                        try:
+                            metadata = eval(current_doc["metadata"])  # Convert string to dict
+                            doc = Document(
+                                content=current_doc["content"],
+                                metadata=metadata,
+                                embedding=None  # We'll get from index if needed
+                            )
+                            self.documents.append(doc)
+                            docs_loaded += 1
+                        except Exception as e:
+                            print(f"Error loading document: {e}")
+                    
+                    current_doc = {}  # Reset for new document
+                
+                elif line.startswith("Content:"):
+                    current_doc["content"] = line[len("Content:"):].strip()
+                
+                elif line.startswith("Metadata:"):
+                    current_doc["metadata"] = line[len("Metadata:"):].strip()
+                
+                i += 1
+            
+            # Process the last document if any
+            if current_doc.get("content") and current_doc.get("metadata"):
+                try:
+                    metadata = eval(current_doc["metadata"])
+                    doc = Document(
+                        content=current_doc["content"],
+                        metadata=metadata,
+                        embedding=None
+                    )
+                    self.documents.append(doc)
+                    docs_loaded += 1
+                except Exception as e:
+                    print(f"Error loading document: {e}")
+        
+        print(f"✅ Loaded {docs_loaded} documents from vectors file")
+        return self.documents
 
 
 

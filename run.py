@@ -10,7 +10,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from src.graph.knowledge_graph import KnowledgeGraph
 from src.rag.rag_system import RAGSystem, Document
 from src.agents.react_agent import ReActAgent
-from src.example import create_sample_documents
 
 if __name__ == "__main__":
     print("🚀 Running ReActAgent on existing Neo4j graph and FAISS index")
@@ -21,16 +20,24 @@ if __name__ == "__main__":
         # Initialize RAG system with loaded graph and existing FAISS index
         rag = RAGSystem(kg)
         
-        # Load the documents into the RAG system
-        print("📄 Loading documents into RAG system...")
-        documents = create_sample_documents()
-        for doc in documents:
-            # Just add docs to memory without reindexing
-            if doc.embedding is None:
-                doc.embedding = rag._get_embedding_with_retry(doc.content)
-            rag.documents.append(doc)
-        print(f"✅ Loaded {len(rag.documents)} documents")
-
+        # Load documents from vectors file 
+        rag.load_documents_from_vectors_file()
+        
+        # If index loaded successfully but no documents in memory, try to match them
+        if rag.index is not None and rag.index.ntotal > 0 and not rag.documents:
+            print("⚠️ Documents not in memory but index exists, reconstructing document objects...")
+            # Create dummy documents with embeddings from the index
+            dummy_docs = []
+            for i in range(rag.index.ntotal):
+                # Create a document with default content but correct embedding position
+                dummy_docs.append(Document(
+                    content=f"Document from index position {i}",
+                    metadata={"source": f"index_position_{i}"},
+                    embedding=None  # Will be retrieved from index during search
+                ))
+            rag.documents = dummy_docs
+            print(f"✅ Created {len(dummy_docs)} document references from index")
+        
         # Create the ReAct agent
         agent = ReActAgent(rag)
 
@@ -41,14 +48,11 @@ if __name__ == "__main__":
         example_queries = [
             # single hop question:
             "Who is the CEO of Tesla?",
-            "Where is Tesla headquartered?",
-            "Who founded OpenAI?",
             # multi hop question:
             "who founded the company that headquarters is in the capital of Texas?",
             # i dont know question:
             "what is the capital of France?",
-            # most complex question multi-hop:
-            "What year was SpaceX founded?"
+  
         ]
 
         print("\n❓ Processing queries...")
